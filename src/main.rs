@@ -12,6 +12,7 @@ mod fragment;
 mod shaders;
 mod camera;
 mod celestial_body;
+mod spaceship;
 
 use framebuffer::Framebuffer;
 use vertex::Vertex;
@@ -20,12 +21,14 @@ use triangle::triangle;
 use camera::Camera;
 use shaders::{vertex_shader, fragment_shader, Uniforms};
 use celestial_body::{CelestialBody, ShaderType};
+use spaceship::Spaceship;
 
 
 pub struct RenderContext {
     framebuffer: Framebuffer,
     camera: Camera,
     bodies: Vec<CelestialBody>,
+    spaceship: Spaceship,
     current_body_index: usize,
     time: f32,
 }
@@ -87,6 +90,7 @@ impl RenderContext {
                 Vec3::new(0.0, 1.0, 0.0),
             ),
             bodies,
+            spaceship: Spaceship::new(),
             current_body_index: 0,
             time: 0.0,
         }
@@ -231,12 +235,19 @@ fn main() {
     let mut last_frame_time = std::time::Instant::now();
 
     println!("Controls:");
+    println!("🎮 Camera:");
     println!("  Arrow Keys: Orbit camera");
     println!("  W/S: Zoom in/out");
+    println!("🚀 Spaceship:");
+    println!("  A/D: Rotate spaceship left/right");
+    println!("  W: Thrust forward");
+    println!("🎯 Focus:");
     println!("  1: Focus on Sun");
     println!("  2: Focus on Mars (Rocky Planet)");
     println!("  3: Focus on Moon");
     println!("  4: Focus on Jupiter (Gas Giant)");
+    println!("  5: Focus on Spaceship");
+    println!("⚙️  Controls:");
     println!("  Space: Toggle orbit animation");
     println!("  ESC: Exit");
 
@@ -327,6 +338,28 @@ fn main() {
             );
         }
 
+        // Render spaceship
+        let spaceship_model_matrix = create_model_matrix(
+            context.spaceship.position,
+            context.spaceship.scale,
+            context.spaceship.rotation,
+        );
+
+        let spaceship_uniforms = Uniforms::new(
+            spaceship_model_matrix,
+            view_matrix,
+            projection_matrix,
+            viewport_matrix,
+            context.time,
+        );
+
+        render(
+            &mut context.framebuffer,
+            &spaceship_uniforms,
+            &context.spaceship.vertices,
+            &ShaderType::Ship,
+        );
+
         window
             .update_with_buffer(
                 &context.framebuffer.buffer,
@@ -393,4 +426,26 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
         *orbit_enabled = !*orbit_enabled;
         println!("Orbit animation: {}", if *orbit_enabled { "ON" } else { "OFF" });
     }
+
+    // Spaceship controls
+    let delta_time = 0.016; // Aproximadamente 60 FPS
+    
+    if window.is_key_down(Key::A) {
+        context.spaceship.rotate(-2.0 * delta_time); // Rotar izquierda
+    }
+    if window.is_key_down(Key::D) {
+        context.spaceship.rotate(2.0 * delta_time); // Rotar derecha
+    }
+    if window.is_key_down(Key::W) {
+        context.spaceship.apply_thrust(5.0 * delta_time); // Impulso adelante
+    }
+    
+    // Focus camera on spaceship
+    if window.is_key_pressed(Key::Key5, minifb::KeyRepeat::No) {
+        context.camera.center = context.spaceship.position;
+        println!("Focusing on: Spaceship ({})", context.spaceship.get_model_name());
+    }
+    
+    // Update spaceship
+    context.spaceship.update(delta_time);
 }

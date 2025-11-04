@@ -92,6 +92,7 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms, shader_type: &S
       ShaderType::Moon => moon_shader(fragment, uniforms),
       ShaderType::RingedPlanet => rings_shader(fragment, uniforms),
       ShaderType::Starfield => starfield_shader(fragment, uniforms),
+      ShaderType::Ship => ship_shader(fragment, uniforms),
    }
 }
 
@@ -487,4 +488,45 @@ fn rings_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 fn starfield_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
    // Temporalmente devolver solo fondo negro transparente para debug
    Color::from_hex(0x000000)
+}
+
+// ============================================
+// SHIP SHADER - Nave espacial metálica
+// ============================================
+fn ship_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+   let position = fragment.vertex_position;
+   let time = uniforms.time;
+   
+   // Color base metálico con variación
+   let base_metal = Color::from_hex(0x8090A0); // Gris metálico azulado
+   let highlight = Color::from_hex(0xB0C0D0);  // Más claro para brillos
+   let shadow = Color::from_hex(0x506070);     // Más oscuro para sombras
+   
+   // Efecto de brillo basado en la posición
+   let metallic_noise = uniforms.noise.get_noise_3d(
+      position.x * 20.0,
+      position.y * 20.0,
+      position.z * 20.0,
+   );
+   
+   // Variación metálica
+   let metal_factor = (metallic_noise + 1.0) * 0.5;
+   let hull_color = if metal_factor > 0.7 {
+      lerp_color(&base_metal, &highlight, (metal_factor - 0.7) / 0.3)
+   } else if metal_factor < 0.3 {
+      lerp_color(&shadow, &base_metal, metal_factor / 0.3)
+   } else {
+      base_metal
+   };
+   
+   // Pequeño efecto pulsante para los motores/luces
+   let pulse = ((time * 4.0).sin() + 1.0) * 0.5;
+   let engine_glow = Color::from_hex(0x00AAFF); // Azul brillante
+   
+   // Si estamos en la parte trasera de la nave (motores), agregar brillo
+   if position.z < -0.2 && pulse > 0.6 {
+      blend_colors(&hull_color, &engine_glow, (pulse - 0.6) * 2.5)
+   } else {
+      hull_color
+   }
 }
