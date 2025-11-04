@@ -92,8 +92,6 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms, shader_type: &S
       ShaderType::Moon => moon_shader(fragment, uniforms),
       ShaderType::RingedPlanet => rings_shader(fragment, uniforms),
       ShaderType::Starfield => starfield_shader(fragment, uniforms),
-      ShaderType::Ship => ship_shader(fragment, uniforms),
-      ShaderType::Orbit => orbit_shader(fragment, uniforms),
    }
 }
 
@@ -484,51 +482,9 @@ fn rings_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 }
 
 // ============================================
-// STARFIELD SHADER - Campo de estrellas simple  
+// STARFIELD SHADER - Campo de estrellas simple
 // ============================================
-fn starfield_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-   let position = fragment.vertex_position;
-   let time = uniforms.time;
-   
-   // Usar coordenadas normalizadas para crear estrellas
-   let star_density = 40.0;
-   let star_noise = uniforms.noise.get_noise_3d(
-      position.x * star_density,
-      position.y * star_density, 
-      position.z * star_density,
-   );
-   
-   // Solo mostrar puntos brillantes como estrellas
-   if star_noise > 0.7 {
-      let brightness = (star_noise - 0.7) / 0.3;
-      let twinkle = (time * 3.0 + position.x * 10.0 + position.y * 15.0).sin() * 0.3 + 0.7;
-      let final_brightness = (brightness * twinkle * 255.0) as u8;
-      
-      // Colores de estrellas variados (blanco, azul claro, amarillo claro)
-      if star_noise > 0.85 {
-         Color::new(final_brightness, final_brightness, 255) // Azul brillante
-      } else if star_noise > 0.8 {
-         Color::new(255, 255, final_brightness) // Amarillo
-      } else {
-         Color::new(final_brightness, final_brightness, final_brightness) // Blanco
-      }
-   } else {
-      Color::from_hex(0x000011) // Fondo espacial muy oscuro
-   }
-}
-
-// ============================================
-// SHIP SHADER - Nave espacial metálica
-// ============================================
-fn ship_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
-   // Color metálico para la nave
-   Color::from_hex(0x8090A0) // Gris metálico azulado
-}
-
-// ============================================  
-// ORBIT SHADER - Líneas de órbita
-// ============================================
-fn orbit_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
-   // Color semi-transparente para las órbitas
-   Color::from_hex(0x404080) // Azul oscuro semi-transparente
+fn starfield_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
+   // Temporalmente devolver solo fondo negro transparente para debug
+   Color::from_hex(0x000000)
 }

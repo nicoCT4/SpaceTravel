@@ -8,8 +8,6 @@ pub enum ShaderType {
    Moon,
    RingedPlanet,
    Starfield,
-   Ship,
-   Orbit,
 }
 
 pub struct CelestialBody {
