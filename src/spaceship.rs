@@ -1,7 +1,6 @@
 use nalgebra_glm::Vec3;
 use crate::vertex::Vertex;
-use crate::obj::Obj;
-use crate::color::Color;
+use crate::obj_loader::Model;
 use std::f32::consts::PI;
 
 pub struct Spaceship {
@@ -18,11 +17,12 @@ impl Spaceship {
         println!("🚀 Loading spaceship model...");
         
         // Try to load the spaceship model
-        let (vertices, is_loaded) = match Obj::load("assets/models/NavePrototipo2.obj") {
-            Ok(obj) => {
+        let (vertices, is_loaded) = match Model::load_obj("assets/models/NavePrototipo2.obj") {
+            Ok(model) => {
                 println!("✅ Spaceship model loaded successfully!");
-                println!("   - Vertices: {}", obj.get_vertex_array().len());
-                (obj.get_vertex_array(), true)
+                println!("   - Vertices: {}", model.vertices.len());
+                println!("   - Faces: {}", model.faces.len());
+                (Self::convert_model_to_vertices(model), true)
             }
             Err(e) => {
                 println!("⚠️  Could not load spaceship model: {}", e);
@@ -78,6 +78,30 @@ impl Spaceship {
             ));
         }
 
+        vertices
+    }
+
+    // Convert Model to Vec<Vertex>
+    fn convert_model_to_vertices(model: Model) -> Vec<Vertex> {
+        let mut vertices = Vec::new();
+        
+        // Calculate normals for each face
+        for face in &model.faces {
+            let v0 = model.vertices[face[0]];
+            let v1 = model.vertices[face[1]];
+            let v2 = model.vertices[face[2]];
+            
+            // Calculate face normal
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+            let normal = nalgebra_glm::normalize(&nalgebra_glm::cross(&edge1, &edge2));
+            
+            // Add vertices for this face
+            vertices.push(Vertex::new(v0, normal, nalgebra_glm::Vec2::new(0.0, 0.0)));
+            vertices.push(Vertex::new(v1, normal, nalgebra_glm::Vec2::new(1.0, 0.0)));
+            vertices.push(Vertex::new(v2, normal, nalgebra_glm::Vec2::new(0.5, 1.0)));
+        }
+        
         vertices
     }
 

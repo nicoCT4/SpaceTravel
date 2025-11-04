@@ -6,19 +6,19 @@ use std::f32::consts::PI;
 mod framebuffer;
 mod triangle;
 mod vertex;
-mod obj;
-mod color;
 mod fragment;
+mod color;
 mod shaders;
 mod camera;
 mod celestial_body;
+mod obj_loader;
 mod spaceship;
 
 use framebuffer::Framebuffer;
 use vertex::Vertex;
-use obj::Obj;
 use triangle::triangle;
 use camera::Camera;
+use obj_loader::Model;
 use shaders::{vertex_shader, fragment_shader, Uniforms};
 use celestial_body::{CelestialBody, ShaderType};
 use spaceship::Spaceship;
@@ -204,6 +204,30 @@ fn render(
     }
 }
 
+// Convert Model to Vec<Vertex>
+fn convert_model_to_vertices(model: &Model) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+    
+    // Calculate normals for each face
+    for face in &model.faces {
+        let v0 = model.vertices[face[0]];
+        let v1 = model.vertices[face[1]];
+        let v2 = model.vertices[face[2]];
+        
+        // Calculate face normal
+        let edge1 = v1 - v0;
+        let edge2 = v2 - v0;
+        let normal = nalgebra_glm::normalize(&nalgebra_glm::cross(&edge1, &edge2));
+        
+        // Add vertices for this face
+        vertices.push(Vertex::new(v0, normal, nalgebra_glm::Vec2::new(0.0, 0.0)));
+        vertices.push(Vertex::new(v1, normal, nalgebra_glm::Vec2::new(1.0, 0.0)));
+        vertices.push(Vertex::new(v2, normal, nalgebra_glm::Vec2::new(0.5, 1.0)));
+    }
+    
+    vertices
+}
+
 fn main() {
     let window_width = 800;
     let window_height = 600;
@@ -226,8 +250,8 @@ fn main() {
     context.framebuffer.set_background_color(0x000011);
 
     // Load sphere model
-    let obj = Obj::load("assets/models/sphere.obj").expect("Failed to load sphere model");
-    let vertex_arrays = obj.get_vertex_array();
+    let sphere_model = Model::load_obj("assets/models/sphere.obj").expect("Failed to load sphere model");
+    let vertex_arrays = convert_model_to_vertices(&sphere_model);
 
     let projection_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
     let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);

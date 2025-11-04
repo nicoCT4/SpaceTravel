@@ -491,42 +491,58 @@ fn starfield_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
 }
 
 // ============================================
-// SHIP SHADER - Nave espacial metálica
+// SHIP SHADER - Nave espacial con colores originales
 // ============================================
 fn ship_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
    let time = uniforms.time;
    
-   // Color base metálico con variación
-   let base_metal = Color::from_hex(0x8090A0); // Gris metálico azulado
-   let highlight = Color::from_hex(0xB0C0D0);  // Más claro para brillos
-   let shadow = Color::from_hex(0x506070);     // Más oscuro para sombras
+   // Helper function for absolute value
+   let abs = |x: f32| if x < 0.0 { -x } else { x };
    
-   // Efecto de brillo basado en la posición
-   let metallic_noise = uniforms.noise.get_noise_3d(
-      position.x * 20.0,
-      position.y * 20.0,
-      position.z * 20.0,
-   );
+   // Original spaceship color palette (exactly matching your design)
+   let color_cuerpo = Color::new(200, 210, 220);       // Light blue-gray body
+   let color_propulsores = Color::new(120, 140, 160);  // Medium blue-gray thrusters
+   let color_compartimentos = Color::new(80, 100, 130); // Dark blue-gray compartments  
+   let color_cabina = Color::new(150, 170, 200);       // Grayish blue cockpit
    
-   // Variación metálica
-   let metal_factor = (metallic_noise + 1.0) * 0.5;
-   let hull_color = if metal_factor > 0.7 {
-      lerp_color(&base_metal, &highlight, (metal_factor - 0.7) / 0.3)
-   } else if metal_factor < 0.3 {
-      lerp_color(&shadow, &base_metal, metal_factor / 0.3)
+   // Assign colors based on position (using the same logic as your original spaceship)
+   let base_color = 
+      // Cockpit (upper central part, high Y and center in X)
+      if position.y > 0.35 && abs(position.x) < 0.25 {
+         color_cabina
+      }
+      // Side compartments (extreme sides, more restrictive)
+      else if abs(position.x) > 0.7 && position.y > -0.1 {
+         color_compartimentos
+      }
+      // Thrusters (rear lower part, negative Z and low Y)
+      else if position.z < -0.7 || (position.y < -0.2 && abs(position.x) < 0.6) {
+         color_propulsores
+      }
+      // Main body (everything else)
+      else {
+         color_cuerpo
+      };
+   
+   // Simple lighting based on normal for subtle shading
+   let normal = fragment.normal.normalize();
+   let light_dir = nalgebra_glm::Vec3::new(0.0, 0.0, 1.0);
+   let dot_product = normal.dot(&light_dir).max(0.3); // Minimum ambient light
+   
+   // Engine glow effect for thrusters (pulsing blue glow)
+   let engine_glow = if position.z < -0.7 {
+      let pulse = ((time * 3.0).sin() + 1.0) * 0.5;
+      let glow_intensity = pulse * 0.4;
+      let engine_blue = Color::new(100, 150, 255);
+      
+      // Blend thruster color with blue glow
+      blend_colors(&base_color, &engine_blue, glow_intensity)
    } else {
-      base_metal
+      base_color
    };
    
-   // Pequeño efecto pulsante para los motores/luces
-   let pulse = ((time * 4.0).sin() + 1.0) * 0.5;
-   let engine_glow = Color::from_hex(0x00AAFF); // Azul brillante
-   
-   // Si estamos en la parte trasera de la nave (motores), agregar brillo
-   if position.z < -0.2 && pulse > 0.6 {
-      blend_colors(&hull_color, &engine_glow, (pulse - 0.6) * 2.5)
-   } else {
-      hull_color
-   }
+   // Apply lighting to final color using the multiplication operator
+   let lighting_factor = 0.4 + 0.6 * dot_product;
+   engine_glow * lighting_factor
 }
