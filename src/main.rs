@@ -72,7 +72,8 @@ impl RenderContext {
             .with_orbit(3.0, 0.5)
             .with_rotation_speed(Vec3::new(0.0, 0.5, 0.0))
         );
-        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 3.0, 0x4488FF));
+        // Órbita del planeta rocoso - Blanco brillante
+        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 3.0, 0xFFFFFF));
         
         // Luna del planeta rocoso
         bodies.push(
@@ -95,7 +96,8 @@ impl RenderContext {
             .with_orbit(6.0, 0.25)
             .with_rotation_speed(Vec3::new(0.0, 0.8, 0.0))
         );
-        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 6.0, 0xFF8844));
+        // Órbita del gigante gaseoso - Blanco brillante
+        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 6.0, 0xFFFFFF));
         
         // Skybox - DESHABILITADO temporalmente para mejor performance
         let skybox = CelestialBody::new(
@@ -292,13 +294,26 @@ fn render_orbit_lines(
         fragments.extend(triangle(&tri[0], &tri[1], &tri[2]));
     }
 
-    // Fragment Processing Stage - usar color directo sin shader
-    framebuffer.set_current_color(color);
+    // Fragment Processing Stage - color con efecto de brillo sutil
     for fragment in fragments {
         let x = fragment.position.x as usize;
         let y = fragment.position.y as usize;
         
         if x < framebuffer.width && y < framebuffer.height {
+            // Extraer componentes RGB del color base
+            let r = ((color >> 16) & 0xFF) as f32;
+            let g = ((color >> 8) & 0xFF) as f32;
+            let b = (color & 0xFF) as f32;
+            
+            // Reducir brillo para efecto más minimalista y sutil
+            let brightness = 0.5; // Factor de brillo reducido para look minimalista
+            let final_r = (r * brightness).min(255.0) as u8;
+            let final_g = (g * brightness).min(255.0) as u8;
+            let final_b = (b * brightness).min(255.0) as u8;
+            
+            let final_color = ((final_r as u32) << 16) | ((final_g as u32) << 8) | (final_b as u32);
+            
+            framebuffer.set_current_color(final_color);
             framebuffer.point(x, y, fragment.depth);
         }
     }

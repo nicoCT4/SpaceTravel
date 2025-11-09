@@ -139,7 +139,7 @@ Each celestial body has a unique procedurally created shader:
 | Collision system | 10 | ✅ 10/10 |
 | 3D camera movement | 40 | ✅ 40/40 |
 | Rendered orbits | 20 | ✅ 20/20 |
-| **TOTAL** | **230** | **210/230 (91%)** |
+| **TOTAL** | **230** | **210/230** |
 
 ## 🏗️ Project Structure
 
