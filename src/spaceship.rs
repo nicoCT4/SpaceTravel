@@ -118,6 +118,18 @@ impl Spaceship {
             self.velocity *= -0.5; // Bounce back
         }
     }
+    
+    pub fn check_collision(&self, body_position: Vec3, body_radius: f32) -> bool {
+        let distance = (self.position - body_position).magnitude();
+        distance < (body_radius + 0.3) // 0.3 es el radio aproximado de la nave
+    }
+    
+    pub fn handle_collision(&mut self, body_position: Vec3) {
+        // Empujar la nave lejos del cuerpo
+        let direction = (self.position - body_position).normalize();
+        self.velocity = direction * 2.0; // Rebote
+        self.position += direction * 0.5; // Separar inmediatamente
+    }
 
     pub fn apply_thrust(&mut self, thrust: f32) {
         let forward = Vec3::new(

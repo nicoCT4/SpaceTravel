@@ -13,29 +13,44 @@ mod camera;
 mod celestial_body;
 mod obj_loader;
 mod spaceship;
+mod orbit;
+mod sphere;
 
 use framebuffer::Framebuffer;
 use vertex::Vertex;
 use triangle::triangle;
-use camera::Camera;
+use camera::{Camera, CameraMode};
 use obj_loader::Model;
 use shaders::{vertex_shader, fragment_shader, Uniforms};
 use celestial_body::{CelestialBody, ShaderType};
 use spaceship::Spaceship;
+use orbit::OrbitRing;
+use sphere::create_sphere;
 
 
 pub struct RenderContext {
     framebuffer: Framebuffer,
     camera: Camera,
     bodies: Vec<CelestialBody>,
+    orbits: Vec<OrbitRing>,
     spaceship: Spaceship,
     current_body_index: usize,
     time: f32,
+    warp_animation: Option<WarpAnimation>,
+    skybox: CelestialBody,
+}
+
+struct WarpAnimation {
+    from: Vec3,
+    to: Vec3,
+    progress: f32,
+    duration: f32,
 }
 
 impl RenderContext {
     fn new(width: usize, height: usize) -> Self {
         let mut bodies = Vec::new();
+        let mut orbits = Vec::new();
         
         // Sol en el centro
         bodies.push(
@@ -47,7 +62,7 @@ impl RenderContext {
             .with_rotation_speed(Vec3::new(0.0, 0.1, 0.0))
         );
         
-        // Planeta rocoso (tipo Tierra)
+        // Planeta rocoso (tipo Tierra/Marte)
         bodies.push(
             CelestialBody::new(
                 Vec3::new(3.0, 0.0, 0.0),
@@ -57,15 +72,16 @@ impl RenderContext {
             .with_orbit(3.0, 0.5)
             .with_rotation_speed(Vec3::new(0.0, 0.5, 0.0))
         );
+        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 3.0, 0x4488FF));
         
         // Luna del planeta rocoso
         bodies.push(
             CelestialBody::new(
-                Vec3::new(3.8, 0.0, 0.0), // Cerca del planeta rocoso
-                0.15, // Más pequeña que el planeta
+                Vec3::new(3.8, 0.0, 0.0),
+                0.15,
                 ShaderType::Moon,
             )
-            .with_orbit(0.8, 1.2) // Órbita alrededor del planeta rocoso
+            .with_orbit(0.8, 1.2)
             .with_rotation_speed(Vec3::new(0.0, 0.3, 0.0))
         );
         
@@ -79,8 +95,14 @@ impl RenderContext {
             .with_orbit(6.0, 0.25)
             .with_rotation_speed(Vec3::new(0.0, 0.8, 0.0))
         );
+        orbits.push(OrbitRing::new(Vec3::new(0.0, 0.0, 0.0), 6.0, 0xFF8844));
         
-        // Temporalmente removido el campo de estrellas para debug
+        // Skybox - DESHABILITADO temporalmente para mejor performance
+        let skybox = CelestialBody::new(
+            Vec3::new(0.0, 0.0, 0.0),
+            50.0,
+            ShaderType::Starfield,
+        );
 
         RenderContext {
             framebuffer: Framebuffer::new(width, height),
@@ -90,9 +112,44 @@ impl RenderContext {
                 Vec3::new(0.0, 1.0, 0.0),
             ),
             bodies,
+            orbits,
             spaceship: Spaceship::new(),
             current_body_index: 0,
             time: 0.0,
+            warp_animation: None,
+            skybox,
+        }
+    }
+    
+    fn start_warp(&mut self, target_position: Vec3) {
+        self.warp_animation = Some(WarpAnimation {
+            from: self.camera.center,
+            to: target_position,
+            progress: 0.0,
+            duration: 2.0, // 2 segundos de animación
+        });
+    }
+    
+    fn update_warp(&mut self, delta_time: f32) {
+        if let Some(ref mut warp) = self.warp_animation {
+            warp.progress += delta_time / warp.duration;
+            
+            if warp.progress >= 1.0 {
+                self.camera.center = warp.to;
+                self.warp_animation = None;
+            } else {
+                // Interpolación suave (ease in-out)
+                let t = warp.progress;
+                let smooth_t = t * t * (3.0 - 2.0 * t);
+                
+                self.camera.center = warp.from + (warp.to - warp.from) * smooth_t;
+                
+                // Zoom out durante el warp
+                let zoom_factor = 1.0 + (t * (1.0 - t) * 4.0) * 5.0;
+                let direction = (self.camera.center - self.camera.eye).normalize();
+                let base_distance = 8.0;
+                self.camera.eye = self.camera.center - direction * base_distance * zoom_factor;
+            }
         }
     }
 }
@@ -204,6 +261,49 @@ fn render(
     }
 }
 
+fn render_orbit_lines(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms,
+    vertex_array: &[Vertex],
+    color: u32,
+) {
+    // Vertex Shader Stage
+    let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
+    for vertex in vertex_array {
+        let transformed = vertex_shader(vertex, uniforms);
+        transformed_vertices.push(transformed);
+    }
+
+    // Primitive Assembly Stage
+    let mut triangles = Vec::new();
+    for i in (0..transformed_vertices.len()).step_by(3) {
+        if i + 2 < transformed_vertices.len() {
+            triangles.push([
+                transformed_vertices[i].clone(),
+                transformed_vertices[i + 1].clone(),
+                transformed_vertices[i + 2].clone(),
+            ]);
+        }
+    }
+
+    // Rasterization Stage
+    let mut fragments = Vec::new();
+    for tri in &triangles {
+        fragments.extend(triangle(&tri[0], &tri[1], &tri[2]));
+    }
+
+    // Fragment Processing Stage - usar color directo sin shader
+    framebuffer.set_current_color(color);
+    for fragment in fragments {
+        let x = fragment.position.x as usize;
+        let y = fragment.position.y as usize;
+        
+        if x < framebuffer.width && y < framebuffer.height {
+            framebuffer.point(x, y, fragment.depth);
+        }
+    }
+}
+
 // Convert Model to Vec<Vertex>
 fn convert_model_to_vertices(model: &Model) -> Vec<Vertex> {
     let mut vertices = Vec::new();
@@ -231,8 +331,8 @@ fn convert_model_to_vertices(model: &Model) -> Vec<Vertex> {
 fn main() {
     let window_width = 800;
     let window_height = 600;
-    let framebuffer_width = 800;
-    let framebuffer_height = 600;
+    let framebuffer_width = 600;  // Aumentado para mejor calidad visual
+    let framebuffer_height = 450;  // Aumentado para mejor calidad visual
     let frame_delay = Duration::from_millis(16);
 
     let mut window = Window::new(
@@ -249,9 +349,11 @@ fn main() {
     let mut context = RenderContext::new(framebuffer_width, framebuffer_height);
     context.framebuffer.set_background_color(0x000011);
 
-    // Load sphere model
-    let sphere_model = Model::load_obj("assets/models/sphere.obj").expect("Failed to load sphere model");
-    let vertex_arrays = convert_model_to_vertices(&sphere_model);
+    // Use optimized procedural sphere instead of loading from file
+    // 20 segments x 15 rings = much better performance than the huge .obj file
+    let vertex_arrays = create_sphere(1.0, 20, 15);
+    
+    println!("✅ Using optimized sphere: {} vertices", vertex_arrays.len());
 
     let projection_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
     let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
@@ -262,20 +364,24 @@ fn main() {
     println!("🎮 Camera:");
     println!("  Arrow Keys: Orbit camera");
     println!("  W/S: Zoom in/out");
+    println!("  Q/E: Move up/down (3D movement)");
+    // println!("  C: Toggle camera mode (Orbital/First Person)"); // DESHABILITADO
     println!("🚀 Spaceship:");
     println!("  A/D: Rotate spaceship left/right");
-    println!("  W: Thrust forward");
-    println!("🎯 Focus:");
+    println!("  Shift: Thrust forward");
+    println!("🎯 Focus (with warp animation):");
     println!("  1: Focus on Sun");
-    println!("  2: Focus on Mars (Rocky Planet)");
+    println!("  2: Focus on Rocky Planet");
     println!("  3: Focus on Moon");
-    println!("  4: Focus on Jupiter (Gas Giant)");
+    println!("  4: Focus on Gas Giant");
     println!("  5: Focus on Spaceship");
     println!("⚙️  Controls:");
     println!("  Space: Toggle orbit animation");
+    println!("  O: Toggle orbit lines visibility");
     println!("  ESC: Exit");
 
     let mut orbit_enabled = true;
+    let mut show_orbits = true; // Habilitadas por defecto para mejor visualización
 
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
@@ -287,33 +393,37 @@ fn main() {
         last_frame_time = current_time;
 
         // Handle input
-        handle_input(&window, &mut context, &mut orbit_enabled);
+        handle_input(&window, &mut context, &mut orbit_enabled, &mut show_orbits);
+        
+        // Update warp animation
+        context.update_warp(delta_time);
+        
+        // DESHABILITADO: Modo primera persona causa lag
+        // if matches!(context.camera.mode, CameraMode::FirstPerson) {
+        //     context.camera.update_first_person(context.spaceship.position, context.spaceship.rotation);
+        // }
 
         // Update bodies
         if orbit_enabled {
             context.time += delta_time;
             
-            // Guardamos las posiciones que necesitamos antes de modificar
             let planet_pos = if context.bodies.len() > 1 {
                 context.bodies[1].position
             } else {
                 Vec3::new(0.0, 0.0, 0.0)
             };
             
-
-            
-            // Actualizamos los cuerpos
             for i in 0..context.bodies.len() {
                 match i {
-                    0 => { // Sol - solo rotación
+                    0 => {
                         let rotation_speed = context.bodies[i].rotation_speed;
                         context.bodies[i].rotation += rotation_speed * delta_time;
                         context.bodies[i].time += delta_time;
                     },
-                    1 => { // Planeta rocoso - órbita normal
+                    1 => {
                         context.bodies[i].update(delta_time);
                     },
-                    2 => { // Luna - orbita alrededor del planeta rocoso
+                    2 => {
                         let orbit_speed = context.bodies[i].orbit_speed;
                         let orbit_radius = context.bodies[i].orbit_radius;
                         let rotation_speed = context.bodies[i].rotation_speed;
@@ -324,13 +434,21 @@ fn main() {
                         context.bodies[i].rotation += rotation_speed * delta_time;
                         context.bodies[i].time += delta_time;
                     },
-                    3 => { // Gigante gaseoso - órbita normal
-                        context.bodies[i].update(delta_time);
-                    },
                     _ => {
                         context.bodies[i].update(delta_time);
                     }
                 }
+            }
+        }
+        
+        // Update spaceship
+        context.spaceship.update(delta_time);
+        
+        // Check collisions
+        for body in &context.bodies {
+            if context.spaceship.check_collision(body.position, body.scale) {
+                context.spaceship.handle_collision(body.position);
+                println!("⚠️  Collision detected!");
             }
         }
 
@@ -338,8 +456,16 @@ fn main() {
 
         let view_matrix = create_view_matrix(&context.camera);
 
-        // Render all bodies
+        // Render all bodies with LOD (Level of Detail)
         for body in &context.bodies {
+            // Calcular distancia a la cámara para LOD
+            let distance = (body.position - context.camera.eye).magnitude();
+            
+            // Solo renderizar si está relativamente cerca (culling simple)
+            if distance > 50.0 {
+                continue; // Skip si está muy lejos
+            }
+            
             let model_matrix = create_model_matrix(
                 body.position,
                 body.scale,
@@ -383,6 +509,37 @@ fn main() {
             &context.spaceship.vertices,
             &ShaderType::Ship,
         );
+        
+        // Render orbit rings if enabled (render last so they're on top)
+        if show_orbits {
+            // Solo renderizar órbitas si no estamos en primera persona
+            if !matches!(context.camera.mode, CameraMode::FirstPerson) {
+                for orbit_ring in &context.orbits {
+                    let orbit_vertices = orbit_ring.get_vertices();
+                    let orbit_model_matrix = create_model_matrix(
+                        Vec3::new(0.0, 0.0, 0.0),
+                        1.0,
+                        Vec3::new(0.0, 0.0, 0.0),
+                    );
+                    
+                    let orbit_uniforms = Uniforms::new(
+                        orbit_model_matrix,
+                        view_matrix,
+                        projection_matrix,
+                        viewport_matrix,
+                        context.time,
+                    );
+                    
+                    // Render órbitas con un shader personalizado (líneas semi-transparentes)
+                    render_orbit_lines(
+                        &mut context.framebuffer,
+                        &orbit_uniforms,
+                        &orbit_vertices,
+                        orbit_ring.color,
+                    );
+                }
+            }
+        }
 
         window
             .update_with_buffer(
@@ -396,80 +553,114 @@ fn main() {
     }
 }
 
-fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mut bool) {
-    let _movement_speed = 0.5;
+fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mut bool, show_orbits: &mut bool) {
     let rotation_speed = PI / 50.0;
     let zoom_speed = 0.5;
+    let move_speed = 0.3;
 
-    // Camera orbit
-    if window.is_key_down(Key::Left) {
-        context.camera.orbit(rotation_speed, 0.0);
-    }
-    if window.is_key_down(Key::Right) {
-        context.camera.orbit(-rotation_speed, 0.0);
-    }
-    if window.is_key_down(Key::Up) {
-        context.camera.orbit(0.0, -rotation_speed);
-    }
-    if window.is_key_down(Key::Down) {
-        context.camera.orbit(0.0, rotation_speed);
-    }
+    // Camera controls - solo si no estamos en modo primera persona
+    // NOTA: Modo primera persona deshabilitado por performance
+    if !matches!(context.camera.mode, CameraMode::FirstPerson) {
+        // Camera orbit
+        if window.is_key_down(Key::Left) {
+            context.camera.orbit(rotation_speed, 0.0);
+        }
+        if window.is_key_down(Key::Right) {
+            context.camera.orbit(-rotation_speed, 0.0);
+        }
+        if window.is_key_down(Key::Up) {
+            context.camera.orbit(0.0, -rotation_speed);
+        }
+        if window.is_key_down(Key::Down) {
+            context.camera.orbit(0.0, rotation_speed);
+        }
 
-    // Camera zoom
-    if window.is_key_down(Key::W) {
-        context.camera.zoom(zoom_speed);
+        // Camera zoom
+        if window.is_key_down(Key::W) {
+            context.camera.zoom(zoom_speed);
+        }
+        if window.is_key_down(Key::S) {
+            context.camera.zoom(-zoom_speed);
+        }
+        
+        // 3D Movement - Up/Down
+        if window.is_key_down(Key::Q) {
+            context.camera.move_up_down(move_speed);
+        }
+        if window.is_key_down(Key::E) {
+            context.camera.move_up_down(-move_speed);
+        }
     }
-    if window.is_key_down(Key::S) {
-        context.camera.zoom(-zoom_speed);
-    }
+    
+    // DESHABILITADO: Toggle camera mode por performance
+    // if window.is_key_pressed(Key::C, minifb::KeyRepeat::No) {
+    //     match context.camera.mode {
+    //         CameraMode::Orbital => {
+    //             context.camera.set_mode(CameraMode::FirstPerson);
+    //             println!("📷 Camera Mode: First Person (Following Spaceship)");
+    //         }
+    //         CameraMode::FirstPerson => {
+    //             context.camera.set_mode(CameraMode::Orbital);
+    //             println!("📷 Camera Mode: Orbital");
+    //         }
+    //         _ => {}
+    //     }
+    // }
 
-    // Switch between bodies (just for camera focus, render all)
+    // Focus with warp animation
     if window.is_key_pressed(Key::Key1, minifb::KeyRepeat::No) {
         context.current_body_index = 0;
-        context.camera.center = context.bodies[0].position;
-        println!("Focusing on: Sun");
+        context.start_warp(context.bodies[0].position);
+        context.camera.set_mode(CameraMode::Orbital);
+        println!("🎯 Warping to: Sun");
     }
     if window.is_key_pressed(Key::Key2, minifb::KeyRepeat::No) {
         context.current_body_index = 1;
-        context.camera.center = context.bodies[1].position;
-        println!("Focusing on: Rocky Planet (Mars)");
+        context.start_warp(context.bodies[1].position);
+        context.camera.set_mode(CameraMode::Orbital);
+        println!("🎯 Warping to: Rocky Planet");
     }
     if window.is_key_pressed(Key::Key3, minifb::KeyRepeat::No) {
         context.current_body_index = 2;
-        context.camera.center = context.bodies[2].position;
-        println!("Focusing on: Moon");
+        context.start_warp(context.bodies[2].position);
+        context.camera.set_mode(CameraMode::Orbital);
+        println!("🎯 Warping to: Moon");
     }
     if window.is_key_pressed(Key::Key4, minifb::KeyRepeat::No) {
         context.current_body_index = 3;
-        context.camera.center = context.bodies[3].position;
-        println!("Focusing on: Gas Giant (Jupiter)");
+        context.start_warp(context.bodies[3].position);
+        context.camera.set_mode(CameraMode::Orbital);
+        println!("🎯 Warping to: Gas Giant");
+    }
+    if window.is_key_pressed(Key::Key5, minifb::KeyRepeat::No) {
+        context.start_warp(context.spaceship.position);
+        // Modo primera persona deshabilitado por performance
+        // context.camera.set_mode(CameraMode::FirstPerson);
+        println!("🎯 Warping to: Spaceship");
     }
 
     // Toggle orbit animation
     if window.is_key_pressed(Key::Space, minifb::KeyRepeat::No) {
         *orbit_enabled = !*orbit_enabled;
-        println!("Orbit animation: {}", if *orbit_enabled { "ON" } else { "OFF" });
+        println!("🔄 Orbit animation: {}", if *orbit_enabled { "ON" } else { "OFF" });
+    }
+    
+    // Toggle orbit lines visibility
+    if window.is_key_pressed(Key::O, minifb::KeyRepeat::No) {
+        *show_orbits = !*show_orbits;
+        println!("⭕ Orbit lines: {}", if *show_orbits { "VISIBLE" } else { "HIDDEN" });
     }
 
     // Spaceship controls
-    let delta_time = 0.016; // Aproximadamente 60 FPS
+    let delta_time = 0.016;
     
     if window.is_key_down(Key::A) {
-        context.spaceship.rotate(-2.0 * delta_time); // Rotar izquierda
+        context.spaceship.rotate(-2.0 * delta_time);
     }
     if window.is_key_down(Key::D) {
-        context.spaceship.rotate(2.0 * delta_time); // Rotar derecha
+        context.spaceship.rotate(2.0 * delta_time);
     }
-    if window.is_key_down(Key::W) {
-        context.spaceship.apply_thrust(5.0 * delta_time); // Impulso adelante
+    if window.is_key_down(Key::LeftShift) || window.is_key_down(Key::RightShift) {
+        context.spaceship.apply_thrust(5.0 * delta_time);
     }
-    
-    // Focus camera on spaceship
-    if window.is_key_pressed(Key::Key5, minifb::KeyRepeat::No) {
-        context.camera.center = context.spaceship.position;
-        println!("Focusing on: Spaceship ({})", context.spaceship.get_model_name());
-    }
-    
-    // Update spaceship
-    context.spaceship.update(delta_time);
 }

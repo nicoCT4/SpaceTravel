@@ -198,7 +198,7 @@ fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 }
 
 // ============================================
-// ROCKY PLANET SHADER - Planeta tipo Marte
+// ROCKY PLANET SHADER - Planeta tipo Marte (BALANCEADO)
 // ============================================
 fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
@@ -212,21 +212,21 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       position.z * terrain_zoom,
    );
    
-   // Capa base con variación de rugosidad
    let base_noise = terrain_noise.abs();
-   let terrain_roughness = base_noise * 0.7 + 0.3;
    
-   // Colores base de Marte (más uniforme en tonos rojizos)
-   let rust_red = Color::from_hex(0xB22222);    // Rojo ladrillo
-   let mars_dust = Color::from_hex(0xCD853F);   // Polvo marciano
-   let iron_oxide = Color::from_hex(0x8B4513);  // Marrón silla
+   // Colores base de Marte
+   let rust_red = Color::from_hex(0xB22222);
+   let mars_dust = Color::from_hex(0xCD853F);
+   let iron_oxide = Color::from_hex(0x8B4513);
    
-   let mut base_color = if terrain_roughness > 0.6 {
-      blend_colors(&rust_red, &iron_oxide, (terrain_roughness - 0.6) / 0.4)
+   let mut base_color = if base_noise > 0.6 {
+      blend_colors(&rust_red, &iron_oxide, (base_noise - 0.6) / 0.4)
    } else {
-      blend_colors(&mars_dust, &rust_red, terrain_roughness / 0.6)
-   };   // Capa 2: Detalles de superficie marciana (dunas, cráteres)
-   let detail_zoom = 10.0;
+      blend_colors(&mars_dust, &rust_red, base_noise / 0.6)
+   };
+   
+   // Capa 2: Detalles de superficie
+   let detail_zoom = 8.0;
    let detail_noise = uniforms.noise.get_noise_3d(
       position.x * detail_zoom + 100.0,
       position.y * detail_zoom,
@@ -234,14 +234,14 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    );
    
    let detail_color = if detail_noise > 0.3 {
-      Color::from_hex(0xF4A460) // Arena/dunas
+      Color::from_hex(0xF4A460)
    } else {
-      Color::from_hex(0xA0522D) // Roca marciana
+      Color::from_hex(0xA0522D)
    };
-   base_color = blend_colors(&base_color, &detail_color, detail_noise.abs() * 0.4);
+   base_color = blend_colors(&base_color, &detail_color, detail_noise.abs() * 0.3);
    
-   // Capa 3: Tormentas de polvo marcianas
-   let dust_zoom = 8.0;
+   // Capa 3: Tormentas de polvo (simplificadas pero presentes)
+   let dust_zoom = 6.0;
    let dust_speed = 0.1;
    let dust_noise = uniforms.noise.get_noise_3d(
       position.x * dust_zoom + time * dust_speed,
@@ -251,51 +251,48 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    
    if dust_noise > 0.6 {
       let dust_factor = (dust_noise - 0.6) / 0.4;
-      let dust_color = Color::from_hex(0xD2691E); // Color polvo rojizo
-      base_color = blend_colors(&base_color, &dust_color, dust_factor * 0.3);
+      let dust_color = Color::from_hex(0xD2691E);
+      base_color = blend_colors(&base_color, &dust_color, dust_factor * 0.2);
    }
    
-   // Aplicar iluminación suave para ver todo el planeta
-   let light_intensity = fragment.intensity * 0.7 + 0.3; // Mínimo 30% de luz ambiente
+   // Iluminación suave
+   let light_intensity = fragment.intensity * 0.7 + 0.3;
    base_color * light_intensity
 }
 
 // ============================================
-// GAS GIANT SHADER - Planeta tipo Júpiter/Saturno
+// GAS GIANT SHADER - Planeta tipo Júpiter (BALANCEADO)
 // ============================================
 fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
    let time = uniforms.time;
    
-   // Capa 1: Bandas horizontales base
-   let band_frequency = 15.0;
+   // Bandas horizontales
+   let band_frequency = 14.0;
    let band_position = position.y * band_frequency;
    
    // Colores de las bandas
-   let color1 = Color::from_hex(0xd4a574); // Beige claro
-   let color2 = Color::from_hex(0xc17f4a); // Marrón claro
-   let color3 = Color::from_hex(0x8b6239); // Marrón oscuro
-   let color4 = Color::from_hex(0xe6c9a8); // Crema
+   let color1 = Color::from_hex(0xd4a574);
+   let color2 = Color::from_hex(0xc17f4a);
+   let color3 = Color::from_hex(0x8b6239);
+   let color4 = Color::from_hex(0xe6c9a8);
    
    let band_value = (band_position.sin() + 1.0) * 0.5;
-   let base_color = if band_value < 0.25 {
-      let t = band_value * 4.0;
+   let base_color = if band_value < 0.33 {
+      let t = band_value * 3.0;
       lerp_color(&color1, &color2, t)
-   } else if band_value < 0.5 {
-      let t = (band_value - 0.25) * 4.0;
+   } else if band_value < 0.66 {
+      let t = (band_value - 0.33) * 3.0;
       lerp_color(&color2, &color3, t)
-   } else if band_value < 0.75 {
-      let t = (band_value - 0.5) * 4.0;
-      lerp_color(&color3, &color4, t)
    } else {
-      let t = (band_value - 0.75) * 4.0;
-      lerp_color(&color4, &color1, t)
+      let t = (band_value - 0.66) * 3.0;
+      lerp_color(&color3, &color4, t)
    };
    
-   // Capa 2: Turbulencias en las bandas
-   let turbulence_zoom = 8.0;
+   // Turbulencias
+   let turbulence_zoom = 6.0;
    let turbulence_noise = uniforms.noise.get_noise_3d(
-      position.x * turbulence_zoom + time * 0.3,
+      position.x * turbulence_zoom + time * 0.2,
       position.y * turbulence_zoom * 0.5,
       position.z * turbulence_zoom,
    );
@@ -309,35 +306,24 @@ fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       Color::from_hex(0xe8d4b8)
    };
    
-   let with_turbulence = blend_colors(&base_color, &turbulence_color, turbulence_noise.abs() * 0.4);
+   let with_turbulence = blend_colors(&base_color, &turbulence_color, turbulence_noise.abs() * 0.3);
    
-   // Capa 3: Gran Mancha Roja (o equivalente)
+   // Gran Mancha Roja simplificada
    let spot_center_x = 0.3;
    let spot_center_y = 0.2;
    let distance_to_spot = ((position.x - spot_center_x).powi(2) + 
                            (position.y - spot_center_y).powi(2)).sqrt();
    
-   if distance_to_spot < 0.3 {
+   if distance_to_spot < 0.25 {
       let spot_noise = uniforms.noise.get_noise_3d(
-         position.x * 5.0 + time * 0.05,
-         position.y * 5.0,
-         position.z * 5.0,
+         position.x * 4.0 + time * 0.05,
+         position.y * 4.0,
+         position.z * 4.0,
       );
       
-      let spot_factor = (1.0 - distance_to_spot / 0.3) * ((spot_noise + 1.0) * 0.5);
-      let spot_color = Color::from_hex(0xc74440); // Rojo
-      let with_spot = blend_colors(&with_turbulence, &spot_color, spot_factor * 0.7);
-      
-      // Capa 4: Detalles finos y remolinos
-      let detail_zoom = 20.0;
-      let detail_noise = uniforms.noise.get_noise_3d(
-         position.x * detail_zoom - time * 0.2,
-         position.y * detail_zoom,
-         position.z * detail_zoom,
-      );
-      
-      let detail_color = Color::from_hex(0xf5e6d3);
-      let final_color = blend_colors(&with_spot, &detail_color, detail_noise.abs() * 0.2);
+      let spot_factor = (1.0 - distance_to_spot / 0.25) * ((spot_noise + 1.0) * 0.5);
+      let spot_color = Color::from_hex(0xc74440);
+      let final_color = blend_colors(&with_turbulence, &spot_color, spot_factor * 0.5);
       
       final_color * (fragment.intensity * 0.7 + 0.3)
    } else {
@@ -485,9 +471,47 @@ fn rings_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 // ============================================
 // STARFIELD SHADER - Campo de estrellas simple
 // ============================================
-fn starfield_shader(_fragment: &Fragment, _uniforms: &Uniforms) -> Color {
-   // Temporalmente devolver solo fondo negro transparente para debug
-   Color::from_hex(0x000000)
+fn starfield_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+   let position = fragment.vertex_position;
+   
+   // Normalizar la posición para usarla como dirección
+   let dir = position.normalize();
+   
+   // Usar noise para generar estrellas pseudo-aleatorias
+   let star_zoom = 50.0;
+   let star_noise = uniforms.noise.get_noise_3d(
+      dir.x * star_zoom,
+      dir.y * star_zoom,
+      dir.z * star_zoom,
+   );
+   
+   // Threshold alto para estrellas (queremos puntos brillantes dispersos)
+   if star_noise > 0.85 {
+      let brightness = ((star_noise - 0.85) / 0.15).powf(2.0);
+      
+      // Diferentes colores de estrellas
+      let star_colors = [
+         0xFFFFFF, // Blanco
+         0xFFEEDD, // Blanco cálido
+         0xDDDDFF, // Azul claro
+         0xFFDDDD, // Rojo claro
+      ];
+      
+      // Usar noise adicional para seleccionar color
+      let color_noise = uniforms.noise.get_noise_3d(
+         dir.x * star_zoom * 2.0,
+         dir.y * star_zoom * 2.0,
+         dir.z * star_zoom * 2.0,
+      );
+      
+      let color_index = ((color_noise + 1.0) * 0.5 * star_colors.len() as f32) as usize % star_colors.len();
+      let star_color = Color::from_hex(star_colors[color_index]);
+      
+      star_color * brightness
+   } else {
+      // Fondo espacial muy oscuro
+      Color::from_hex(0x000011)
+   }
 }
 
 // ============================================
