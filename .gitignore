@@ -14,3 +14,5 @@ Cargo.lock
 *.bmp
 
 .DS_Store
+
+demo.sh
