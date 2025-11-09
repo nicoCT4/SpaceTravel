@@ -555,8 +555,8 @@ fn main() {
 
 fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mut bool, show_orbits: &mut bool) {
     let rotation_speed = PI / 50.0;
-    let zoom_speed = 0.5;
-    let move_speed = 0.3;
+    let zoom_speed = 0.3; // Reducido para zoom más suave
+    let move_speed = 0.2; // Reducido para movimiento más suave
 
     // Camera controls - solo si no estamos en modo primera persona
     // NOTA: Modo primera persona deshabilitado por performance
@@ -575,7 +575,7 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
             context.camera.orbit(0.0, rotation_speed);
         }
 
-        // Camera zoom
+        // Camera zoom (más suave y con throttling)
         if window.is_key_down(Key::W) {
             context.camera.zoom(zoom_speed);
         }
@@ -583,7 +583,7 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
             context.camera.zoom(-zoom_speed);
         }
         
-        // 3D Movement - Up/Down
+        // 3D Movement - Up/Down (más suave)
         if window.is_key_down(Key::Q) {
             context.camera.move_up_down(move_speed);
         }

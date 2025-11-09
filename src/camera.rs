@@ -118,8 +118,16 @@ impl Camera {
 
    pub fn zoom(&mut self, delta: f32) {
       let direction = (self.center - self.eye).normalize();
-      self.eye += direction * delta;
-      self.has_changed = true;
+      let new_eye = self.eye + direction * delta;
+      
+      // Limitar el zoom para evitar ir demasiado cerca o lejos
+      let distance = (new_eye - self.center).magnitude();
+      
+      // Solo actualizar si está en un rango razonable
+      if distance > 2.0 && distance < 100.0 {
+         self.eye = new_eye;
+         self.has_changed = true;
+      }
    }
 }
 

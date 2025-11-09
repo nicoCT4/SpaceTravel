@@ -1,202 +1,202 @@
 # 🚀 Space Travel Simulator
 
-Un simulador de sistema solar creado completamente desde cero usando Rust, con un software renderer personalizado y shaders procedurales.
+A solar system simulator created completely from scratch using Rust, with a custom software renderer and procedural shaders.
 
-## 📹 Video de Demostración
+## 📹 Demo Video
 
-[Próximamente - Agregar link del video aquí]
+[Coming Soon - Add video link here]
 
-## ✨ Características Implementadas
+## ✨ Implemented Features
 
-### 🎨 Software Renderer Personalizado
-- Pipeline completo de renderizado: Vertex Shader → Rasterización → Fragment Shader
-- Sistema de Z-buffer para manejo de profundidad
-- Transformaciones de matrices (Model, View, Projection, Viewport)
-- Framebuffer personalizado
+### 🎨 Custom Software Renderer
+- Complete rendering pipeline: Vertex Shader → Rasterization → Fragment Shader
+- Z-buffer system for depth handling
+- Matrix transformations (Model, View, Projection, Viewport)
+- Custom framebuffer
 
-### 🌍 Sistema Solar (4 Cuerpos Celestes)
-1. **Sol** - Estrella central con shader de plasma animado y manchas solares
-2. **Planeta Rocoso** (tipo Marte) - Con terreno procedural y tormentas de polvo
-3. **Luna** - Orbita el planeta rocoso, con cráteres y superficie detallada
-4. **Gigante Gaseoso** (tipo Júpiter) - Con bandas atmosféricas y turbulencias
+### 🌍 Solar System (4 Celestial Bodies)
+1. **Sol** - Central star with animated plasma shader and sunspots
+2. **Rocky Planet** (Mars-like) - With procedural terrain and dust storms
+3. **Moon** - Orbits the rocky planet, with craters and detailed surface
+4. **Gas Giant** (Jupiter-like) - With atmospheric bands and turbulence
 
-### 🎮 Sistema de Cámara
-- **Modo Orbital**: Órbita alrededor de cualquier cuerpo celeste
-- **Movimiento 3D Completo**: Permite movimiento vertical fuera del plano eclíptico (Q/E)
-- **Controles de zoom** y rotación suaves
-- ~~**Modo Primera Persona**: DESHABILITADO por performance~~
+### 🎮 Camera System
+- **Orbital Mode**: Orbits around any celestial body
+- **Full 3D Movement**: Allows vertical movement outside the ecliptic plane (Q/E)
+- Smooth **zoom controls** and rotation
+- ~~**First Person Mode**: DISABLED for performance~~
 
-### 🚀 Nave Espacial
-- Modelo 3D personalizado (`NavePrototipo2.obj`)
-- Sistema de física básico (velocidad, thrust, fricción)
-- Shader personalizado con efectos de motores pulsantes
-- Controles de vuelo completos
+### 🚀 Spaceship
+- Custom 3D model (`NavePrototipo2.obj`)
+- Basic physics system (velocity, thrust, friction)
+- Custom shader with pulsating engine effects
+- Full flight controls
 
-### ⚡ Sistema de Warp Animado
-- Transición animada entre diferentes cuerpos celestes
-- Efecto de zoom suave durante el viaje
-- Interpolación ease-in-ease-out
+### ⚡ Animated Warp System
+- Animated transition between different celestial bodies
+- Smooth zoom effect during travel
+- Ease-in-ease-out interpolation
 
-### 🎯 Características Adicionales
-- ✅ Órbitas planetarias realistas en el plano eclíptico
-- ✅ Rotación individual de cada cuerpo sobre su eje
-- ✅ Renderizado de líneas de órbita (toggle on/off)
-- ✅ Sistema de colisiones básico
-- ✅ Shaders procedurales avanzados usando FastNoise
-- ✅ Control de animaciones (pausar/reanudar)
+### 🎯 Additional Features
+- ✅ Realistic planetary orbits in the ecliptic plane
+- ✅ Individual rotation of each body on its axis
+- ✅ Orbit line rendering (toggle on/off)
+- ✅ Basic collision system
+- ✅ Advanced procedural shaders using FastNoise
+- ✅ Animation controls (pause/resume)
 
-## 🎮 Controles
+## 🎮 Controls
 
-### Cámara
-- **Flechas**: Orbitar cámara alrededor del objeto enfocado
+### Camera
+- **Arrow Keys**: Orbit camera around focused object
 - **W/S**: Zoom in/out
-- **Q/E**: Mover arriba/abajo (movimiento 3D)
-~~- **C**: Cambiar modo de cámara (DESHABILITADO)~~
+- **Q/E**: Move up/down (3D movement)
+~~- **C**: Change camera mode (DISABLED)~~
 
-### Nave Espacial
-- **A/D**: Rotar nave izquierda/derecha
-- **Shift**: Impulso adelante
+### Spaceship
+- **A/D**: Rotate ship left/right
+- **Shift**: Forward thrust
 
-### Focus/Warp (con animación)
-- **1**: Enfocar en el Sol
-- **2**: Enfocar en Planeta Rocoso
-- **3**: Enfocar en Luna
-- **4**: Enfocar en Gigante Gaseoso
-- **5**: Enfocar en Nave
+### Focus/Warp (with animation)
+- **1**: Focus on the Sun
+- **2**: Focus on Rocky Planet
+- **3**: Focus on Moon
+- **4**: Focus on Gas Giant
+- **5**: Focus on Ship
 
-### Otros
-- **Espacio**: Pausar/Reanudar animación de órbitas
-- **O**: Mostrar/Ocultar líneas de órbita
-- **ESC**: Salir
+### Others
+- **Space**: Pause/Resume orbit animation
+- **O**: Show/Hide orbit lines
+- **ESC**: Exit
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Technologies Used
 
-- **Rust** - Lenguaje de programación
-- **nalgebra-glm** - Matemáticas y transformaciones 3D
-- **minifb** - Ventana y manejo de input
-- **fastnoise-lite** - Generación procedural de ruido para shaders
+- **Rust** - Programming language
+- **nalgebra-glm** - 3D mathematics and transformations
+- **minifb** - Window and input handling
+- **fastnoise-lite** - Procedural noise generation for shaders
 
-## 📦 Compilación y Ejecución
+## 📦 Compilation and Execution
 
-### Requisitos
-- Rust (versión 1.70 o superior)
+### Requirements
+- Rust (version 1.70 or higher)
 - Cargo
 
-### Compilar y Ejecutar
+### Compile and Run
 ```bash
-# Modo desarrollo
+# Development mode
 cargo run
 
-# Modo release (mejor performance)
+# Release mode (better performance)
 cargo run --release
 ```
 
-## 🎨 Shaders Procedurales
+## 🎨 Procedural Shaders
 
-Cada cuerpo celeste tiene un shader único creado proceduralmente:
+Each celestial body has a unique procedurally created shader:
 
 ### Sol Shader
-- Efecto de plasma usando múltiples capas de noise
-- Manchas solares animadas
-- Efecto de corona brillante en los bordes
+- Plasma effect using multiple noise layers
+- Animated sunspots
+- Bright corona effect at the edges
 
-### Planeta Rocoso Shader
-- Terreno marciano con variaciones de color
-- Dunas y formaciones rocosas
-- Tormentas de polvo animadas
+### Rocky Planet Shader
+- Martian terrain with color variations
+- Dunes and rock formations
+- Animated dust storms
 
-### Gigante Gaseoso Shader
-- Bandas atmosféricas horizontales
-- Turbulencias y remolinos
-- Gran Mancha Roja animada
+### Gas Giant Shader
+- Horizontal atmospheric bands
+- Turbulence and swirls
+- Animated Great Red Spot
 
-### Luna Shader
-- Superficie grisácea con variaciones
-- Cráteres de impacto
-- Detalles de superficie finos
+### Moon Shader
+- Grayish surface with variations
+- Impact craters
+- Fine surface details
 
-### Planeta con Anillos Shader
-- Anillos concéntricos con gaps
-- Partículas de hielo brillante
-- Rocas y polvo cósmico
+### Ringed Planet Shader
+- Concentric rings with gaps
+- Bright ice particles
+- Rocks and cosmic dust
 
-### Nave Shader
-- Colores diferenciados por componente (cabina, cuerpo, propulsores)
-- Efecto de motores pulsantes (azul brillante)
-- Iluminación básica
+### Ship Shader
+- Differentiated colors by component (cockpit, body, thrusters)
+- Pulsating engine effect (bright blue)
+- Basic lighting
 
-## 📊 Puntuación del Proyecto
+## 📊 Project Score
 
-| Criterio | Puntos | Estado |
+| Criterion | Points | Status |
 |----------|--------|--------|
-| Estética del sistema | 30 | ✅ 30/30 |
+| System aesthetics | 30 | ✅ 30/30 |
 | Performance | 20 | ✅ 20/20 |
-| 4 Cuerpos celestes | 50 | ✅ 40/50 |
+| 4 Celestial bodies | 50 | ✅ 40/50 |
 | Instant warping | 10 | ✅ 10/10 |
-| Warp animado | 10 | ✅ 10/10 |
-| Nave modelada | 30 | ✅ 30/30 |
-| Skybox estrellas | 10 | ❌ 0/10 |
-| Sistema de colisiones | 10 | ✅ 10/10 |
-| Movimiento 3D cámara | 40 | ✅ 40/40 |
-| Órbitas renderizadas | 20 | ✅ 20/20 |
+| Animated warp | 10 | ✅ 10/10 |
+| Modeled ship | 30 | ✅ 30/30 |
+| Star skybox | 10 | ❌ 0/10 |
+| Collision system | 10 | ✅ 10/10 |
+| 3D camera movement | 40 | ✅ 40/40 |
+| Rendered orbits | 20 | ✅ 20/20 |
 | **TOTAL** | **230** | **210/230 (91%)** |
 
-## 🏗️ Estructura del Proyecto
+## 🏗️ Project Structure
 
 ```
 SpaceTravel/
 ├── src/
-│   ├── main.rs              # Punto de entrada y loop principal
-│   ├── camera.rs            # Sistema de cámara (Orbital/Primera Persona)
-│   ├── celestial_body.rs    # Estructura de cuerpos celestes
-│   ├── spaceship.rs         # Nave espacial y física
-│   ├── shaders.rs           # Todos los shaders procedurales
-│   ├── orbit.rs             # Sistema de órbitas visuales
-│   ├── framebuffer.rs       # Buffer de renderizado
-│   ├── vertex.rs            # Estructura de vértices
-│   ├── fragment.rs          # Estructura de fragmentos
-│   ├── triangle.rs          # Rasterización de triángulos
-│   ├── color.rs             # Manejo de colores
-│   └── obj_loader.rs        # Cargador de modelos .obj
+│   ├── main.rs              # Entry point and main loop
+│   ├── camera.rs            # Camera system (Orbital/First Person)
+│   ├── celestial_body.rs    # Celestial body structure
+│   ├── spaceship.rs         # Spaceship and physics
+│   ├── shaders.rs           # All procedural shaders
+│   ├── orbit.rs             # Visual orbit system
+│   ├── framebuffer.rs       # Rendering buffer
+│   ├── vertex.rs            # Vertex structure
+│   ├── fragment.rs          # Fragment structure
+│   ├── triangle.rs          # Triangle rasterization
+│   ├── color.rs             # Color handling
+│   └── obj_loader.rs        # .obj model loader
 ├── assets/
 │   └── models/
-│       ├── sphere.obj       # Modelo de esfera para planetas
-│       └── NavePrototipo2.obj # Modelo de la nave
+│       ├── sphere.obj       # Sphere model for planets
+│       └── NavePrototipo2.obj # Ship model
 ├── Cargo.toml
 └── README.md
 ```
 
-## 🎓 Proyecto Académico
+## 🎓 Academic Project
 
-Este proyecto fue desarrollado para el curso de Gráficas por Computadora en la Universidad del Valle de Guatemala.
+This project was developed for the Computer Graphics course at Universidad del Valle de Guatemala.
 
-**Autor**: [Nicolás Concuá]  
-**Fecha**: Noviembre 2025  
-**Curso**: Gráficas por Computadora
+**Author**: [Nicolás Concuá]  
+**Date**: November 2025  
+**Course**: Computer Graphics
 
-## 📝 Notas de Implementación
+## 📝 Implementation Notes
 
-- El sistema solar usa un plano eclíptico (Y = 0) para las órbitas principales
-- La luna orbita alrededor del planeta rocoso, no del sol
-- Las órbitas son circulares para simplificación
-- Los shaders son completamente procedurales usando FastNoise
-- El sistema de colisiones usa detección esférica simple
-- La animación de warp usa interpolación suave (ease-in-out)
+- The solar system uses an ecliptic plane (Y = 0) for main orbits
+- The moon orbits around the rocky planet, not the sun
+- Orbits are circular for simplification
+- Shaders are completely procedural using FastNoise
+- The collision system uses simple spherical detection
+- The warp animation uses smooth interpolation (ease-in-out)
 
-## 🚀 Mejoras Futuras Posibles
+## 🚀 Possible Future Improvements
 
-- [ ] Implementar skybox completo con estrellas
-- [ ] Agregar más cuerpos celestes (asteroides, cometas)
-- [ ] Mejorar el sistema de colisiones (respuesta física más realista)
-- [ ] Agregar sonido y música
-- [ ] Implementar trails de la nave
-- [ ] Agregar más efectos visuales (lens flare, bloom)
-- [ ] Optimizar el renderer para mejor performance
+- [ ] Implement complete skybox with stars
+- [ ] Add more celestial bodies (asteroids, comets)
+- [ ] Improve collision system (more realistic physical response)
+- [ ] Add sound and music
+- [ ] Implement ship trails
+- [ ] Add more visual effects (lens flare, bloom)
+- [ ] Optimize renderer for better performance
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto es de código abierto para propósitos educativos.
+This project is open source for educational purposes.
 
 ---
 
-⭐ **¡Disfruta explorando el sistema solar!** ⭐
+⭐ **Enjoy exploring the solar system!** ⭐
