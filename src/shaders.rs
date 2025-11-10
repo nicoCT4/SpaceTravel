@@ -145,14 +145,14 @@ fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
    let time = uniforms.time;
    
-   // Capa 1: Base de colores cálidos con gradiente radial
+   // Capa 1: Base de colores cálidos con gradiente radial más brillante
    let distance_from_center = (position.x * position.x + 
                               position.y * position.y + 
                               position.z * position.z).sqrt();
    
-   let core_color = Color::from_hex(0xFFFACD);  // Amarillo muy claro (casi blanco)
-   let mid_color = Color::from_hex(0xFFD700);   // Dorado brillante
-   let edge_color = Color::from_hex(0xFF8C00);  // Naranja dorado
+   let core_color = Color::from_hex(0xFFFFFF);  // Blanco puro en el núcleo
+   let mid_color = Color::from_hex(0xFFFF00);   // Amarillo brillante
+   let edge_color = Color::from_hex(0xFFAA00);  // Naranja intenso
    
    let base_color = if distance_from_center < 0.5 {
       let t = distance_from_center * 2.0;
@@ -162,7 +162,7 @@ fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       lerp_color(&mid_color, &edge_color, t)
    };
    
-   // Capa 2: Plasma animado usando noise
+   // Capa 2: Plasma animado usando noise con más intensidad
    let plasma_zoom = 8.0;
    let plasma_speed = 0.3;
    let plasma_noise = uniforms.noise.get_noise_3d(
@@ -172,8 +172,8 @@ fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    );
    
    let plasma_intensity = (plasma_noise + 1.0) * 0.5;
-   let plasma_color = Color::from_hex(0xFFAA00);
-   let with_plasma = blend_colors(&base_color, &plasma_color, plasma_intensity * 0.3);
+   let plasma_color = Color::from_hex(0xFFDD00);
+   let with_plasma = blend_colors(&base_color, &plasma_color, plasma_intensity * 0.4);
    
    // Capa 3: Manchas solares (áreas más oscuras)
    let spot_zoom = 3.0;
@@ -185,15 +185,16 @@ fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    
    if spot_noise > 0.5 {
       let spot_factor = (spot_noise - 0.5) * 2.0;
-      let dark_spot = Color::from_hex(0x994400);
-      let with_spots = blend_colors(&with_plasma, &dark_spot, spot_factor * 0.4);
+      let dark_spot = Color::from_hex(0xCC6600);
+      let with_spots = blend_colors(&with_plasma, &dark_spot, spot_factor * 0.3);
       
-      // Capa 4: Brillo en los bordes (efecto corona)
-      let edge_glow = (1.0 - distance_from_center).powf(3.0);
-      let glow_color = Color::from_hex(0xFFFFAA);
-      blend_colors(&with_spots, &glow_color, edge_glow * 0.3)
+      // Capa 4: Brillo intenso en los bordes (efecto corona)
+      let edge_glow = (1.0 - distance_from_center).powf(2.5);
+      let glow_color = Color::from_hex(0xFFFFCC);
+      blend_colors(&with_spots, &glow_color, edge_glow * 0.4)
    } else {
-      with_plasma
+      // Aumentar brillo general
+      with_plasma * 1.2
    }
 }
 
@@ -204,7 +205,7 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
    let time = uniforms.time;
    
-   // Capa 1: Terreno marciano base
+   // Capa 1: Terreno marciano base con más contraste
    let terrain_zoom = 4.0;
    let terrain_noise = uniforms.noise.get_noise_3d(
       position.x * terrain_zoom,
@@ -214,10 +215,10 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    
    let base_noise = terrain_noise.abs();
    
-   // Colores base de Marte
-   let rust_red = Color::from_hex(0xB22222);
-   let mars_dust = Color::from_hex(0xCD853F);
-   let iron_oxide = Color::from_hex(0x8B4513);
+   // Colores base de Marte más vibrantes
+   let rust_red = Color::from_hex(0xD94000);     // Rojo óxido más intenso
+   let mars_dust = Color::from_hex(0xE09850);     // Arena más brillante
+   let iron_oxide = Color::from_hex(0x8B3A00);   // Marrón oscuro más profundo
    
    let mut base_color = if base_noise > 0.6 {
       blend_colors(&rust_red, &iron_oxide, (base_noise - 0.6) / 0.4)
@@ -225,7 +226,7 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       blend_colors(&mars_dust, &rust_red, base_noise / 0.6)
    };
    
-   // Capa 2: Detalles de superficie
+   // Capa 2: Detalles de superficie con más contraste
    let detail_zoom = 8.0;
    let detail_noise = uniforms.noise.get_noise_3d(
       position.x * detail_zoom + 100.0,
@@ -234,13 +235,13 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    );
    
    let detail_color = if detail_noise > 0.3 {
-      Color::from_hex(0xF4A460)
+      Color::from_hex(0xFFB870)  // Dorado claro
    } else {
-      Color::from_hex(0xA0522D)
+      Color::from_hex(0x6B3A1E)  // Marrón oscuro
    };
-   base_color = blend_colors(&base_color, &detail_color, detail_noise.abs() * 0.3);
+   base_color = blend_colors(&base_color, &detail_color, detail_noise.abs() * 0.4);
    
-   // Capa 3: Tormentas de polvo (simplificadas pero presentes)
+   // Capa 3: Tormentas de polvo más visibles
    let dust_zoom = 6.0;
    let dust_speed = 0.1;
    let dust_noise = uniforms.noise.get_noise_3d(
@@ -249,14 +250,14 @@ fn rocky_planet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       position.z * dust_zoom + time * dust_speed * 0.3,
    );
    
-   if dust_noise > 0.6 {
-      let dust_factor = (dust_noise - 0.6) / 0.4;
-      let dust_color = Color::from_hex(0xD2691E);
-      base_color = blend_colors(&base_color, &dust_color, dust_factor * 0.2);
+   if dust_noise > 0.5 {
+      let dust_factor = (dust_noise - 0.5) / 0.5;
+      let dust_color = Color::from_hex(0xE6A055);
+      base_color = blend_colors(&base_color, &dust_color, dust_factor * 0.3);
    }
    
-   // Iluminación suave
-   let light_intensity = fragment.intensity * 0.7 + 0.3;
+   // Iluminación con más contraste
+   let light_intensity = fragment.intensity * 0.8 + 0.2;
    base_color * light_intensity
 }
 
@@ -267,15 +268,15 @@ fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
    let position = fragment.vertex_position;
    let time = uniforms.time;
    
-   // Bandas horizontales
+   // Bandas horizontales con más contraste
    let band_frequency = 14.0;
    let band_position = position.y * band_frequency;
    
-   // Colores de las bandas
-   let color1 = Color::from_hex(0xd4a574);
-   let color2 = Color::from_hex(0xc17f4a);
-   let color3 = Color::from_hex(0x8b6239);
-   let color4 = Color::from_hex(0xe6c9a8);
+   // Colores de las bandas más vibrantes
+   let color1 = Color::from_hex(0xE8C9A0);  // Beige claro
+   let color2 = Color::from_hex(0xD9985F);  // Naranja suave
+   let color3 = Color::from_hex(0xA87850);  // Marrón claro
+   let color4 = Color::from_hex(0xF5DEC0);  // Crema brillante
    
    let band_value = (band_position.sin() + 1.0) * 0.5;
    let base_color = if band_value < 0.33 {
@@ -289,7 +290,7 @@ fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       lerp_color(&color3, &color4, t)
    };
    
-   // Turbulencias
+   // Turbulencias más pronunciadas
    let turbulence_zoom = 6.0;
    let turbulence_noise = uniforms.noise.get_noise_3d(
       position.x * turbulence_zoom + time * 0.2,
@@ -297,18 +298,18 @@ fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       position.z * turbulence_zoom,
    );
    
-   let turbulent_offset = turbulence_noise * 0.3;
+   let turbulent_offset = turbulence_noise * 0.4;
    let turbulent_band = ((band_position + turbulent_offset).sin() + 1.0) * 0.5;
    
    let turbulence_color = if turbulent_band > 0.6 {
-      Color::from_hex(0xa0785a)
+      Color::from_hex(0xB8906A)
    } else {
-      Color::from_hex(0xe8d4b8)
+      Color::from_hex(0xFFE4C0)
    };
    
-   let with_turbulence = blend_colors(&base_color, &turbulence_color, turbulence_noise.abs() * 0.3);
+   let with_turbulence = blend_colors(&base_color, &turbulence_color, turbulence_noise.abs() * 0.4);
    
-   // Gran Mancha Roja simplificada
+   // Gran Mancha Roja más prominente
    let spot_center_x = 0.3;
    let spot_center_y = 0.2;
    let distance_to_spot = ((position.x - spot_center_x).powi(2) + 
@@ -322,12 +323,12 @@ fn gas_giant_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
       );
       
       let spot_factor = (1.0 - distance_to_spot / 0.25) * ((spot_noise + 1.0) * 0.5);
-      let spot_color = Color::from_hex(0xc74440);
-      let final_color = blend_colors(&with_turbulence, &spot_color, spot_factor * 0.5);
+      let spot_color = Color::from_hex(0xE85050);  // Rojo más brillante
+      let final_color = blend_colors(&with_turbulence, &spot_color, spot_factor * 0.6);
       
-      final_color * (fragment.intensity * 0.7 + 0.3)
+      final_color * (fragment.intensity * 0.8 + 0.2)
    } else {
-      with_turbulence * (fragment.intensity * 0.7 + 0.3)
+      with_turbulence * (fragment.intensity * 0.8 + 0.2)
    }
 }
 

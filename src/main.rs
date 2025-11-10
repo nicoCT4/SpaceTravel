@@ -43,6 +43,7 @@ pub struct RenderContext {
 struct WarpAnimation {
     from: Vec3,
     to: Vec3,
+    target_body_index: Option<usize>, // Índice del cuerpo objetivo para seguimiento
     progress: f32,
     duration: f32,
 }
@@ -123,10 +124,11 @@ impl RenderContext {
         }
     }
     
-    fn start_warp(&mut self, target_position: Vec3) {
+    fn start_warp(&mut self, target_position: Vec3, target_body_index: Option<usize>) {
         self.warp_animation = Some(WarpAnimation {
             from: self.camera.center,
             to: target_position,
+            target_body_index,
             progress: 0.0,
             duration: 2.0, // 2 segundos de animación
         });
@@ -137,17 +139,37 @@ impl RenderContext {
             warp.progress += delta_time / warp.duration;
             
             if warp.progress >= 1.0 {
-                self.camera.center = warp.to;
+                // Al terminar el warp, centrar en el objetivo final
+                if let Some(body_index) = warp.target_body_index {
+                    if body_index < self.bodies.len() {
+                        self.camera.center = self.bodies[body_index].position;
+                    }
+                } else {
+                    self.camera.center = warp.to;
+                }
                 self.warp_animation = None;
             } else {
-                // Interpolación suave (ease in-out)
-                let t = warp.progress;
-                let smooth_t = t * t * (3.0 - 2.0 * t);
-                
-                self.camera.center = warp.from + (warp.to - warp.from) * smooth_t;
+                // Durante el warp, seguir directamente al objetivo
+                if let Some(body_index) = warp.target_body_index {
+                    if body_index < self.bodies.len() {
+                        // Seguir la posición actual del planeta
+                        let target_pos = self.bodies[body_index].position;
+                        
+                        // Interpolación suave hacia el objetivo móvil
+                        let t = warp.progress;
+                        let smooth_t = t * t * (3.0 - 2.0 * t);
+                        
+                        self.camera.center = warp.from + (target_pos - warp.from) * smooth_t;
+                    }
+                } else {
+                    // Si no hay objetivo específico (nave), usar posición fija
+                    let t = warp.progress;
+                    let smooth_t = t * t * (3.0 - 2.0 * t);
+                    self.camera.center = warp.from + (warp.to - warp.from) * smooth_t;
+                }
                 
                 // Zoom out durante el warp
-                let zoom_factor = 1.0 + (t * (1.0 - t) * 4.0) * 5.0;
+                let zoom_factor = 1.0 + (warp.progress * (1.0 - warp.progress) * 4.0) * 5.0;
                 let direction = (self.camera.center - self.camera.eye).normalize();
                 let base_distance = 8.0;
                 self.camera.eye = self.camera.center - direction * base_distance * zoom_factor;
@@ -259,6 +281,58 @@ fn render(
             
             framebuffer.set_current_color(color);
             framebuffer.point(x, y, fragment.depth);
+        }
+    }
+}
+
+// Renderizar campo de estrellas de fondo
+fn render_starfield(framebuffer: &mut Framebuffer, time: f32) {
+    use fastnoise_lite::{FastNoiseLite, NoiseType};
+    
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+    noise.set_frequency(Some(0.02));
+    
+    let width = framebuffer.width;
+    let height = framebuffer.height;
+    
+    // Renderizar estrellas en posiciones pseudoaleatorias
+    for i in 0..300 {  // 300 estrellas
+        let seed_x = (i * 73) % 1000;
+        let seed_y = (i * 137) % 1000;
+        
+        let x = ((seed_x as f32 + time * 0.5) % (width as f32)) as usize;
+        let y = (seed_y as f32 % (height as f32)) as usize;
+        
+        if x < width && y < height {
+            // Usar noise para variar el brillo de las estrellas
+            let brightness_noise = noise.get_noise_2d(i as f32, time * 0.3);
+            let brightness = ((brightness_noise + 1.0) * 0.5 * 200.0 + 55.0) as u8;
+            
+            // Algunas estrellas tienen un tinte azulado/rojizo
+            let color_variation = (i % 3) as f32;
+            let (r, g, b) = if color_variation < 1.0 {
+                (brightness, brightness, 255.min(brightness + 30))  // Azulado
+            } else if color_variation < 2.0 {
+                (255.min(brightness + 20), brightness, brightness)  // Rojizo
+            } else {
+                (brightness, brightness, brightness)  // Blanco
+            };
+            
+            let color = ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+            
+            framebuffer.set_current_color(color);
+            framebuffer.point(x, y, f32::MAX);  // Profundidad máxima (fondo)
+            
+            // Algunas estrellas más brillantes tienen un pequeño glow
+            if brightness > 200 && i % 5 == 0 {
+                if x > 0 {
+                    framebuffer.point(x - 1, y, f32::MAX);
+                }
+                if x < width - 1 {
+                    framebuffer.point(x + 1, y, f32::MAX);
+                }
+            }
         }
     }
 }
@@ -418,16 +492,17 @@ fn main() {
         //     context.camera.update_first_person(context.spaceship.position, context.spaceship.rotation);
         // }
 
-        // Update bodies
+        // Update bodies (siempre actualizar posiciones para que el warp funcione)
+        context.time += delta_time;
+        
+        let planet_pos = if context.bodies.len() > 1 {
+            context.bodies[1].position
+        } else {
+            Vec3::new(0.0, 0.0, 0.0)
+        };
+        
+        // Solo actualizar órbitas si orbit_enabled está activado
         if orbit_enabled {
-            context.time += delta_time;
-            
-            let planet_pos = if context.bodies.len() > 1 {
-                context.bodies[1].position
-            } else {
-                Vec3::new(0.0, 0.0, 0.0)
-            };
-            
             for i in 0..context.bodies.len() {
                 match i {
                     0 => {
@@ -468,6 +543,9 @@ fn main() {
         }
 
         context.framebuffer.clear();
+        
+        // Renderizar estrellas de fondo
+        render_starfield(&mut context.framebuffer, context.time);
 
         let view_matrix = create_view_matrix(&context.camera);
 
@@ -625,30 +703,30 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
     // Focus with warp animation
     if window.is_key_pressed(Key::Key1, minifb::KeyRepeat::No) {
         context.current_body_index = 0;
-        context.start_warp(context.bodies[0].position);
+        context.start_warp(context.bodies[0].position, Some(0));
         context.camera.set_mode(CameraMode::Orbital);
         println!("🎯 Warping to: Sun");
     }
     if window.is_key_pressed(Key::Key2, minifb::KeyRepeat::No) {
         context.current_body_index = 1;
-        context.start_warp(context.bodies[1].position);
+        context.start_warp(context.bodies[1].position, Some(1));
         context.camera.set_mode(CameraMode::Orbital);
         println!("🎯 Warping to: Rocky Planet");
     }
     if window.is_key_pressed(Key::Key3, minifb::KeyRepeat::No) {
         context.current_body_index = 2;
-        context.start_warp(context.bodies[2].position);
+        context.start_warp(context.bodies[2].position, Some(2));
         context.camera.set_mode(CameraMode::Orbital);
         println!("🎯 Warping to: Moon");
     }
     if window.is_key_pressed(Key::Key4, minifb::KeyRepeat::No) {
         context.current_body_index = 3;
-        context.start_warp(context.bodies[3].position);
+        context.start_warp(context.bodies[3].position, Some(3));
         context.camera.set_mode(CameraMode::Orbital);
         println!("🎯 Warping to: Gas Giant");
     }
     if window.is_key_pressed(Key::Key5, minifb::KeyRepeat::No) {
-        context.start_warp(context.spaceship.position);
+        context.start_warp(context.spaceship.position, None); // None porque la nave se controla manualmente
         // Modo primera persona deshabilitado por performance
         // context.camera.set_mode(CameraMode::FirstPerson);
         println!("🎯 Warping to: Spaceship");
