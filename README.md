@@ -4,7 +4,9 @@ A solar system simulator created completely from scratch using Rust, with a cust
 
 ## 📹 Demo Video
 
-[Coming Soon - Add video link here]
+**[🎥 Watch the full demo on YouTube](https://youtu.be/1SlQk7qKEvc)**
+
+---
 
 ## ✨ Implemented Features
 
