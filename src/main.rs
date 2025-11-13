@@ -458,11 +458,8 @@ fn main() {
     println!("  A/D: Rotate spaceship left/right");
     println!("  Shift: Thrust forward");
     println!("🎯 Focus (with warp animation):");
-    println!("  1: Focus on Sun");
-    println!("  2: Focus on Rocky Planet");
-    println!("  3: Focus on Moon");
-    println!("  4: Focus on Gas Giant");
-    println!("  5: Focus on Spaceship (Third Person View)");
+    println!("  1: Focus on Sun (Orbital View)");
+    println!("  5: Focus on Spaceship (Third Person View - Optimized)");
     println!("⚙️  Controls:");
     println!("  Space: Toggle orbit animation");
     println!("  O: Toggle orbit lines visibility");

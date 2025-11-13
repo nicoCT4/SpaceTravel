@@ -4,7 +4,7 @@ A solar system simulator created completely from scratch using Rust, with a cust
 
 ## 📹 Demo Video
 
-**[🎥 Watch the full demo on YouTube](https://youtu.be/1SlQk7qKEvc)**
+**[🎥 Watch the full demo on YouTube](https://youtu.be/L0QyyNBOp9s)**
 
 ---
 
@@ -26,7 +26,7 @@ A solar system simulator created completely from scratch using Rust, with a cust
 - **Orbital Mode**: Orbits around any celestial body
 - **Full 3D Movement**: Allows vertical movement outside the ecliptic plane (Q/E)
 - Smooth **zoom controls** and rotation
-- ~~**First Person Mode**: DISABLED for performance~~
+- **Third Person Mode**: Follow spaceship from behind (optimized for performance)
 
 ### 🚀 Spaceship
 - Custom 3D model (`NavePrototipo2.obj`)
@@ -53,18 +53,14 @@ A solar system simulator created completely from scratch using Rust, with a cust
 - **Arrow Keys**: Orbit camera around focused object
 - **W/S**: Zoom in/out
 - **Q/E**: Move up/down (3D movement)
-~~- **C**: Change camera mode (DISABLED)~~
 
 ### Spaceship
 - **A/D**: Rotate ship left/right
 - **Shift**: Forward thrust
 
 ### Focus/Warp (with animation)
-- **1**: Focus on the Sun
-- **2**: Focus on Rocky Planet
-- **3**: Focus on Moon
-- **4**: Focus on Gas Giant
-- **5**: Focus on Ship
+- **1**: Focus on Sun (Orbital View)
+- **5**: Focus on Spaceship (Third Person View - Optimized)
 
 ### Others
 - **Space**: Pause/Resume orbit animation
