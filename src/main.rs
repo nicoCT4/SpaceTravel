@@ -454,7 +454,6 @@ fn main() {
     println!("  Arrow Keys: Orbit camera");
     println!("  W/S: Zoom in/out");
     println!("  Q/E: Move up/down (3D movement)");
-    // println!("  C: Toggle camera mode (Orbital/First Person)"); // DESHABILITADO
     println!("🚀 Spaceship:");
     println!("  A/D: Rotate spaceship left/right");
     println!("  Shift: Thrust forward");
@@ -463,7 +462,7 @@ fn main() {
     println!("  2: Focus on Rocky Planet");
     println!("  3: Focus on Moon");
     println!("  4: Focus on Gas Giant");
-    println!("  5: Focus on Spaceship");
+    println!("  5: Focus on Spaceship (Third Person View)");
     println!("⚙️  Controls:");
     println!("  Space: Toggle orbit animation");
     println!("  O: Toggle orbit lines visibility");
@@ -487,10 +486,12 @@ fn main() {
         // Update warp animation
         context.update_warp(delta_time);
         
-        // DESHABILITADO: Modo primera persona causa lag
-        // if matches!(context.camera.mode, CameraMode::FirstPerson) {
-        //     context.camera.update_first_person(context.spaceship.position, context.spaceship.rotation);
-        // }
+        // Actualizar cámara de tercera persona si está en modo FirstPerson (vista de nave)
+        // Solo actualizar si la nave se movió o rotó significativamente
+        if matches!(context.camera.mode, CameraMode::FirstPerson) {
+            context.camera.update_third_person(context.spaceship.position, context.spaceship.rotation);
+            // En modo tercera persona, no actualizar las órbitas de planetas lejanos
+        }
 
         // Update bodies (siempre actualizar posiciones para que el warp funcione)
         context.time += delta_time;
@@ -544,10 +545,20 @@ fn main() {
 
         context.framebuffer.clear();
         
-        // Renderizar estrellas de fondo
-        render_starfield(&mut context.framebuffer, context.time);
+        // Renderizar estrellas de fondo - NO renderizar en modo tercera persona
+        if !matches!(context.camera.mode, CameraMode::FirstPerson) {
+            render_starfield(&mut context.framebuffer, context.time);
+        }
+        // En modo tercera persona: fondo negro puro para mejor performance
 
         let view_matrix = create_view_matrix(&context.camera);
+        
+        // En modo tercera persona, usar culling más agresivo para mejor performance
+        let max_render_distance = if matches!(context.camera.mode, CameraMode::FirstPerson) {
+            20.0  // Distancia reducida en tercera persona
+        } else {
+            50.0  // Distancia normal en modo orbital
+        };
 
         // Render all bodies with LOD (Level of Detail)
         for body in &context.bodies {
@@ -555,7 +566,7 @@ fn main() {
             let distance = (body.position - context.camera.eye).magnitude();
             
             // Solo renderizar si está relativamente cerca (culling simple)
-            if distance > 50.0 {
+            if distance > max_render_distance {
                 continue; // Skip si está muy lejos
             }
             
@@ -604,33 +615,31 @@ fn main() {
         );
         
         // Render orbit rings if enabled (render last so they're on top)
-        if show_orbits {
-            // Solo renderizar órbitas si no estamos en primera persona
-            if !matches!(context.camera.mode, CameraMode::FirstPerson) {
-                for orbit_ring in &context.orbits {
-                    let orbit_vertices = orbit_ring.get_vertices();
-                    let orbit_model_matrix = create_model_matrix(
-                        Vec3::new(0.0, 0.0, 0.0),
-                        1.0,
-                        Vec3::new(0.0, 0.0, 0.0),
-                    );
-                    
-                    let orbit_uniforms = Uniforms::new(
-                        orbit_model_matrix,
-                        view_matrix,
-                        projection_matrix,
-                        viewport_matrix,
-                        context.time,
-                    );
-                    
-                    // Render órbitas con un shader personalizado (líneas semi-transparentes)
-                    render_orbit_lines(
-                        &mut context.framebuffer,
-                        &orbit_uniforms,
-                        &orbit_vertices,
-                        orbit_ring.color,
-                    );
-                }
+        // No renderizar órbitas en modo tercera persona para mejor performance
+        if show_orbits && !matches!(context.camera.mode, CameraMode::FirstPerson) {
+            for orbit_ring in &context.orbits {
+                let orbit_vertices = orbit_ring.get_vertices();
+                let orbit_model_matrix = create_model_matrix(
+                    Vec3::new(0.0, 0.0, 0.0),
+                    1.0,
+                    Vec3::new(0.0, 0.0, 0.0),
+                );
+                
+                let orbit_uniforms = Uniforms::new(
+                    orbit_model_matrix,
+                    view_matrix,
+                    projection_matrix,
+                    viewport_matrix,
+                    context.time,
+                );
+                
+                // Render órbitas con un shader personalizado (líneas semi-transparentes)
+                render_orbit_lines(
+                    &mut context.framebuffer,
+                    &orbit_uniforms,
+                    &orbit_vertices,
+                    orbit_ring.color,
+                );
             }
         }
 
@@ -651,8 +660,7 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
     let zoom_speed = 0.3; // Reducido para zoom más suave
     let move_speed = 0.2; // Reducido para movimiento más suave
 
-    // Camera controls - solo si no estamos en modo primera persona
-    // NOTA: Modo primera persona deshabilitado por performance
+    // Camera controls - solo si no estamos en modo primera persona (vista de nave)
     if !matches!(context.camera.mode, CameraMode::FirstPerson) {
         // Camera orbit
         if window.is_key_down(Key::Left) {
@@ -727,9 +735,9 @@ fn handle_input(window: &Window, context: &mut RenderContext, orbit_enabled: &mu
     }
     if window.is_key_pressed(Key::Key5, minifb::KeyRepeat::No) {
         context.start_warp(context.spaceship.position, None); // None porque la nave se controla manualmente
-        // Modo primera persona deshabilitado por performance
-        // context.camera.set_mode(CameraMode::FirstPerson);
-        println!("🎯 Warping to: Spaceship");
+        // Activar modo primera persona (vista tercera persona de la nave)
+        context.camera.set_mode(CameraMode::FirstPerson);
+        println!("🎯 Warping to: Spaceship (Third Person View)");
     }
 
     // Toggle orbit animation

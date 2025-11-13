@@ -58,6 +58,25 @@ impl Camera {
       
       self.has_changed = true;
    }
+   
+   pub fn update_third_person(&mut self, ship_position: Vec3, ship_rotation: Vec3) {
+      // Cámara de tercera persona - más pegada a la nave
+      let distance_back = 1.2;   // Distancia detrás (reducida de 3.0 a 1.2)
+      let height_up = 0.6;        // Altura sobre la nave (reducida de 1.5 a 0.6)
+      
+      // Calcular dirección hacia donde apunta la nave
+      let cos_y = ship_rotation.y.cos();
+      let sin_y = ship_rotation.y.sin();
+      let forward = Vec3::new(sin_y, 0.0, cos_y);
+      
+      // Posicionar cámara detrás de la nave
+      self.eye = ship_position - forward * distance_back + Vec3::new(0.0, height_up, 0.0);
+      
+      // La cámara mira hacia adelante de la nave (no hacia la nave misma)
+      self.center = ship_position + forward * 5.0;
+      
+      self.has_changed = true;
+   }
 
    pub fn basis_change(&self, vector: &Vec3) -> Vec3 {
       let forward = (self.center - self.eye).normalize();
